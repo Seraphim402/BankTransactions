@@ -1,0 +1,137 @@
+<Window x:Class="BankTransactions.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Банковские транзакции" Height="720" Width="1080"
+        MinHeight="620" MinWidth="920">
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <Border x:Name="Border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" />
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center" />
+                            <TextBlock x:Name="Placeholder"
+                                       Text="{TemplateBinding Tag}"
+                                       Margin="8,0,4,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="#777"
+                                       Visibility="Collapsed"
+                                       IsHitTestVisible="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#4A90E2" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Text" Value="" />
+                                    <Condition Property="IsKeyboardFocused" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Placeholder" Property="Opacity" Value="0.45" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Foreground" Value="#111" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" BorderBrush="#C8CDD7" BorderThickness="0,0,0,1" Padding="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Логин" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBox x:Name="LoginBox" Grid.Column="1" Text="admin" Tag="Логин" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="2" Text="Пароль" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <PasswordBox x:Name="PasswordBox" Grid.Column="3" Password="admin" Margin="0,0,12,0" />
+                <Button Grid.Column="4" Content="Войти" Width="90" Click="LoginClick" />
+                <TextBlock x:Name="StatusText" Grid.Column="5" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#2D5A27" />
+            </Grid>
+        </Border>
+
+        <TabControl Margin="0,12,0,0">
+            <TabItem Header="Клиенты">
+                <Grid Margin="0,10,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,10">
+                        <ComboBox x:Name="ClientTypeBox" Width="150" SelectedIndex="0" Margin="0,0,8,0">
+                            <ComboBoxItem Content="Физическое лицо" Tag="Individual" />
+                            <ComboBoxItem Content="Юридическое лицо" Tag="LegalEntity" />
+                        </ComboBox>
+                        <TextBox x:Name="ClientNameBox" Width="220" Margin="0,0,8,0" Tag="ФИО / название" />
+                        <TextBox x:Name="TaxNumberBox" Width="150" Margin="0,0,8,0" Tag="ИНН" />
+                        <TextBox x:Name="PhoneBox" Width="150" Margin="0,0,8,0" Tag="Телефон" />
+                        <Button Content="Создать" Width="100" Margin="0,0,8,0" Click="CreateClientClick" />
+                        <Button Content="Удалить выбранного" Width="150" Click="DeleteClientClick" />
+                    </WrapPanel>
+                    <DataGrid x:Name="ClientsGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" SelectionMode="Single" />
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Счета">
+                <Grid Margin="0,10,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,10">
+                        <TextBox x:Name="AccountClientIdBox" Width="110" Margin="0,0,8,0" Tag="ID клиента" />
+                        <ComboBox x:Name="AccountTypeBox" Width="150" SelectedIndex="0" Margin="0,0,8,0">
+                            <ComboBoxItem Content="Зарплатный" Tag="Salary" />
+                            <ComboBoxItem Content="Валютный" Tag="Currency" />
+                            <ComboBoxItem Content="Накопительный" Tag="Savings" />
+                        </ComboBox>
+                        <TextBox x:Name="CurrencyBox" Width="100" Text="RUB" Margin="0,0,8,0" Tag="Валюта" />
+                        <Button Content="Создать счет" Width="120" Margin="0,0,8,0" Click="CreateAccountClick" />
+                        <TextBox x:Name="DepositAccountIdBox" Width="100" Margin="16,0,8,0" Tag="ID счета" />
+                        <TextBox x:Name="DepositAmountBox" Width="110" Margin="0,0,8,0" Tag="Сумма" />
+                        <Button Content="Пополнить" Width="100" Click="DepositClick" />
+                    </WrapPanel>
+                    <DataGrid x:Name="AccountsGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Переводы">
+                <Grid Margin="0,10,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,10">
+                        <TextBox x:Name="FromAccountBox" Width="110" Margin="0,0,8,0" Tag="Счет списания" />
+                        <TextBox x:Name="ToAccountBox" Width="110" Margin="0,0,8,0" Tag="Счет получателя" />
+                        <TextBox x:Name="TransferAmountBox" Width="110" Margin="0,0,8,0" Tag="Сумма" />
+                        <ComboBox x:Name="PartnerBankBox" Width="220" DisplayMemberPath="Name" SelectedValuePath="Id" Margin="0,0,8,0" />
+                        <TextBox x:Name="TransferCommentBox" Width="220" Margin="0,0,8,0" Tag="Комментарий" />
+                        <Button Content="Перевести" Width="100" Click="TransferClick" />
+                    </WrapPanel>
+                    <DataGrid x:Name="TransactionsGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

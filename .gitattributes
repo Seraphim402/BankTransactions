@@ -1,0 +1,12 @@
+*.sln text eol=crlf
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.xaml text eol=crlf
+*.md text eol=crlf
+*.py text eol=lf
+*.bat text eol=crlf
+*.docx binary
+*.png binary
+*.exe binary
+*.dll binary
+*.pdb binary
