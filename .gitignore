@@ -5,3 +5,5 @@ obj/
 *.db-shm
 *.db-wal
 .vs/
+__pycache__/
+~$*.docx

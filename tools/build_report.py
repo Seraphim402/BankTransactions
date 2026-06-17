@@ -95,6 +95,66 @@ def line_arrow(draw, points, color="#111111", width=3):
     draw.polygon(head, fill=color)
 
 
+def dashed_line(draw, start, end, fill="#111111", width=2, dash=10):
+    x1, y1 = start
+    x2, y2 = end
+    length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    if length == 0:
+        return
+    steps = int(length // dash)
+    for i in range(0, steps, 2):
+        a = i / steps
+        b = min((i + 1) / steps, 1)
+        draw.line((x1 + (x2 - x1) * a, y1 + (y2 - y1) * a, x1 + (x2 - x1) * b, y1 + (y2 - y1) * b), fill=fill, width=width)
+
+
+def dfd_process(draw, xy, number, text):
+    draw.ellipse(xy, fill="#FFFFFF", outline="#111111", width=3)
+    x1, y1, x2, y2 = xy
+    draw.text((x1 + 16, y1 + 12), number, fill="#111111", font=font(18, True))
+    draw_multiline_center(draw, (x1 + 10, y1 + 35, x2 - 10, y2 - 10), text, size=18, bold=True, fill="#111111")
+
+
+def dfd_store(draw, xy, code, text):
+    x1, y1, x2, y2 = xy
+    draw.rectangle(xy, fill="#FFFFFF", outline="#111111", width=3)
+    draw.line((x1 + 55, y1, x1 + 55, y2), fill="#111111", width=3)
+    draw.text((x1 + 14, y1 + 18), code, fill="#111111", font=font(18, True))
+    draw_multiline_center(draw, (x1 + 60, y1, x2, y2), text, size=18, bold=True, fill="#111111")
+
+
+def uml_actor(draw, center_x, top_y, name):
+    draw.ellipse((center_x - 18, top_y, center_x + 18, top_y + 36), outline="#111111", width=3)
+    draw.line((center_x, top_y + 36, center_x, top_y + 105), fill="#111111", width=3)
+    draw.line((center_x - 45, top_y + 60, center_x + 45, top_y + 60), fill="#111111", width=3)
+    draw.line((center_x, top_y + 105, center_x - 40, top_y + 155), fill="#111111", width=3)
+    draw.line((center_x, top_y + 105, center_x + 40, top_y + 155), fill="#111111", width=3)
+    draw_multiline_center(draw, (center_x - 80, top_y + 165, center_x + 80, top_y + 230), name, size=18, bold=True)
+
+
+def uml_oval(draw, xy, text):
+    draw.ellipse(xy, fill="#FFFFFF", outline="#111111", width=3)
+    draw_multiline_center(draw, xy, text, size=18, bold=True, fill="#111111")
+
+
+def uml_class(draw, xy, name, attributes, methods):
+    x1, y1, x2, y2 = xy
+    draw.rectangle(xy, fill="#FFFFFF", outline="#111111", width=3)
+    header_h = 42
+    attr_h = 88
+    draw.line((x1, y1 + header_h, x2, y1 + header_h), fill="#111111", width=2)
+    draw.line((x1, y1 + header_h + attr_h, x2, y1 + header_h + attr_h), fill="#111111", width=2)
+    draw_multiline_center(draw, (x1, y1, x2, y1 + header_h), name, size=18, bold=True)
+    y = y1 + header_h + 10
+    for item in attributes:
+        draw.text((x1 + 10, y), item, fill="#111111", font=font(14))
+        y += 21
+    y = y1 + header_h + attr_h + 10
+    for item in methods:
+        draw.text((x1 + 10, y), item, fill="#111111", font=font(14))
+        y += 21
+
+
 def write_drawio(name, title, vertices, edges):
     cells = [
         '<mxCell id="0"/>',
@@ -173,24 +233,39 @@ def save_database_scheme():
 def save_sequence():
     img = Image.new("RGB", (1400, 820), "#FFFFFF")
     draw = ImageDraw.Draw(img)
-    draw.text((50, 35), "Сценарий перевода", fill="#0B2545", font=font(36, True))
-    columns = [180, 520, 880, 1200]
-    names = ["Оператор", "WPF-клиент", "Сервер", "SQLite"]
+    draw.text((50, 35), "UML: диаграмма последовательности", fill="#0B2545", font=font(36, True))
+    columns = [160, 470, 790, 1110]
+    names = ["Оператор", "Клиентское окно", "Сервер", "SQLite"]
     for x, name in zip(columns, names):
-        rounded_box(draw, (x - 115, 140, x + 115, 210), name, "#E8EEF5")
-        draw.line([(x, 210), (x, 730)], fill="#C8CDD7", width=3)
-    steps = [
-        (250, 180, 520, "ввод логина"),
-        (310, 520, 880, "Login"),
-        (370, 880, 1200, "проверка Users"),
-        (450, 180, 520, "сумма и счета"),
-        (510, 520, 880, "Transfer"),
-        (570, 880, 1200, "баланс, комиссия,\nзапись Transactions"),
-        (650, 880, 520, "результат"),
+        draw.rectangle((x - 105, 135, x + 105, 190), fill="#FFFFFF", outline="#111111", width=3)
+        draw_multiline_center(draw, (x - 105, 135, x + 105, 190), name, size=18, bold=True)
+        dashed_line(draw, (x, 190), (x, 735), fill="#777777", width=2, dash=12)
+    for x, y1, y2 in [(470, 245, 675), (790, 270, 700), (1110, 320, 610)]:
+        draw.rectangle((x - 8, y1, x + 8, y2), fill="#FFFFFF", outline="#111111", width=2)
+    messages = [
+        (235, 160, 470, "1: ввод логина и пароля", False),
+        (275, 470, 790, "2: Login(login, password)", False),
+        (325, 790, 1110, "3: SELECT Users", False),
+        (375, 1110, 790, "4: token", True),
+        (450, 160, 470, "5: ввод данных перевода", False),
+        (500, 470, 790, "6: Transfer(from, to, amount)", False),
+        (555, 790, 1110, "7: UPDATE / INSERT", False),
+        (625, 1110, 790, "8: ok / error", True),
+        (675, 790, 470, "9: результат операции", True),
     ]
-    for y, x1, x2, text in steps:
-        arrow(draw, (x1, y), (x2, y))
-        draw.text((min(x1, x2) + 25, y - 34), text, fill="#333333", font=font(20))
+    for y, x1, x2, text, dashed in messages:
+        if dashed:
+            dashed_line(draw, (x1, y), (x2, y), fill="#111111", width=2, dash=12)
+            line_arrow(draw, [(x1, y), (x2, y)], width=0)
+        else:
+            line_arrow(draw, [(x1, y), (x2, y)], width=2)
+        draw.text((min(x1, x2) + 18, y - 24), text, fill="#111111", font=font(16))
+    write_drawio(
+        "sequence.drawio",
+        "UML Sequence",
+        [(name, x - 105, 135, 210, 55, "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;") for x, name in zip(columns, names)],
+        [],
+    )
     path = OUT_DIR / "sequence.png"
     img.save(path)
     return path
@@ -369,57 +444,146 @@ def save_idef3():
 
 
 def save_dfd():
-    nodes = [
-        ("operator", "Оператор", (70, 150, 330, 280), "#E8F1FB"),
-        ("client", "WPF-клиент", (520, 150, 820, 280), "#F2F4F7"),
-        ("server", "Сервер\nобработки операций", (520, 430, 820, 580), "#EEF7EE"),
-        ("db", "Хранилище\nSQLite", (1050, 430, 1320, 580), "#FFF4D8"),
+    img = Image.new("RGB", (1400, 900), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "DFD Level 0: диаграмма потоков данных", fill="#0B2545", font=font(36, True))
+
+    draw.rectangle((70, 385, 270, 495), fill="#FFFFFF", outline="#111111", width=3)
+    draw_multiline_center(draw, (70, 385, 270, 495), "Оператор\nбанка", size=18, bold=True)
+
+    dfd_process(draw, (380, 130, 600, 310), "1.0", "Проверить\nавторизацию")
+    dfd_process(draw, (380, 390, 600, 570), "2.0", "Вести\nклиентов\nи счета")
+    dfd_process(draw, (780, 390, 1000, 570), "3.0", "Провести\nтранзакцию")
+    dfd_process(draw, (1090, 130, 1310, 310), "4.0", "Сформировать\nисторию")
+
+    dfd_store(draw, (720, 160, 1000, 240), "D1", "Users")
+    dfd_store(draw, (260, 700, 540, 780), "D2", "Clients")
+    dfd_store(draw, (620, 700, 900, 780), "D3", "Accounts")
+    dfd_store(draw, (1030, 700, 1310, 780), "D4", "Transactions")
+    dfd_store(draw, (1030, 520, 1310, 600), "D5", "Commissions,\nPartnerBanks")
+
+    flows = [
+        ([(270, 405), (380, 215)], "логин, пароль", (300, 285)),
+        ([(600, 190), (720, 190)], "запрос", (640, 165)),
+        ([(720, 220), (600, 245)], "пользователь", (625, 245)),
+        ([(270, 455), (380, 480)], "клиент / счет", (285, 465)),
+        ([(490, 570), (400, 700)], "данные клиента", (410, 635)),
+        ([(545, 570), (690, 700)], "данные счета", (570, 635)),
+        ([(600, 480), (780, 480)], "операция", (665, 450)),
+        ([(760, 700), (840, 570)], "счета", (765, 620)),
+        ([(1000, 445), (1030, 560)], "тарифы", (1010, 495)),
+        ([(890, 570), (890, 700)], "изменения", (905, 625)),
+        ([(1000, 480), (1090, 220)], "результат", (1020, 345)),
+        ([(1200, 310), (1170, 700)], "запись", (1210, 500)),
+        ([(1090, 220), (1090, 95), (170, 95), (170, 385)], "ответ", (520, 105)),
     ]
-    links = [
-        ("operator", "client", "формы"),
-        ("client", "server", "JSON"),
-        ("server", "db", "SQL"),
-        ("server", "client", "ответ"),
-    ]
-    return save_simple_flow("dfd.png", "DFD: диаграмма потоков данных", nodes, links)
+    for points, text, text_xy in flows:
+        line_arrow(draw, points, width=2)
+        draw.text(text_xy, text, fill="#111111", font=font(14))
+
+    write_drawio(
+        "dfd.drawio",
+        "DFD Level 0",
+        [
+            ("Оператор<br>банка", 70, 370, 200, 110, "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;"),
+            ("1.0<br>Проверить<br>авторизацию", 390, 140, 220, 190, "ellipse;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;"),
+            ("2.0<br>Вести<br>клиентов<br>и счета", 390, 360, 220, 190, "ellipse;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;"),
+            ("3.0<br>Провести<br>транзакцию", 725, 360, 220, 190, "ellipse;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;"),
+            ("4.0<br>Сформировать<br>историю", 1050, 360, 220, 190, "ellipse;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;"),
+        ],
+        [],
+    )
+    path = OUT_DIR / "dfd.png"
+    img.save(path)
+    return path
 
 
 def save_usecase():
-    nodes = [
-        ("actor", "Оператор\nбанка", (80, 330, 300, 480), "#E8F1FB"),
-        ("uc1", "Войти\nв систему", (520, 100, 840, 210), "#F2F4F7"),
-        ("uc2", "Создать\nклиента", (520, 250, 840, 360), "#F2F4F7"),
-        ("uc3", "Открыть\nсчет", (520, 400, 840, 510), "#F2F4F7"),
-        ("uc4", "Пополнить\nсчет", (920, 250, 1240, 360), "#EEF7EE"),
-        ("uc5", "Выполнить\nперевод", (920, 400, 1240, 510), "#EEF7EE"),
-        ("uc6", "Удалить\nклиента", (920, 550, 1240, 660), "#FFF4D8"),
-    ]
-    links = [
-        ("actor", "uc1", ""),
-        ("actor", "uc2", ""),
-        ("actor", "uc3", ""),
-        ("actor", "uc4", ""),
-        ("actor", "uc5", ""),
-        ("actor", "uc6", "после входа"),
-    ]
-    return save_simple_flow("usecase.png", "UML: диаграмма вариантов использования", nodes, links)
+    img = Image.new("RGB", (1400, 850), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "UML: диаграмма вариантов использования", fill="#0B2545", font=font(36, True))
+    uml_actor(draw, 165, 320, "Оператор\nбанка")
+    draw.rectangle((350, 125, 1290, 760), fill="#FFFFFF", outline="#111111", width=3)
+    draw.text((375, 145), "Система банковских транзакций", fill="#111111", font=font(20, True))
+    cases = {
+        "login": ((570, 175, 930, 255), "Войти\nв систему"),
+        "client": ((570, 270, 930, 350), "Управлять\nклиентами"),
+        "account": ((570, 365, 930, 445), "Управлять\nсчетами"),
+        "deposit": ((570, 460, 930, 540), "Пополнить\nсчет"),
+        "transfer": ((570, 555, 930, 635), "Выполнить\nперевод"),
+        "delete": ((570, 650, 930, 730), "Удалить\nклиента"),
+    }
+    for xy, text in cases.values():
+        uml_oval(draw, xy, text)
+    association_points = {
+        "login": (245, 345),
+        "client": (245, 365),
+        "account": (245, 385),
+        "deposit": (245, 405),
+        "transfer": (245, 425),
+        "delete": (245, 445),
+    }
+    for key in ["login", "client", "account", "deposit", "transfer", "delete"]:
+        x1, y1, x2, y2 = cases[key][0]
+        draw.line((association_points[key], (x1, (y1 + y2) // 2)), fill="#111111", width=2)
+    x1, y1, x2, y2 = cases["delete"][0]
+    lx1, ly1, lx2, ly2 = cases["login"][0]
+    dashed_line(draw, (x2, (y1 + y2) // 2), (x2 + 105, (y1 + y2) // 2), width=2, dash=12)
+    dashed_line(draw, (x2 + 105, (y1 + y2) // 2), (x2 + 105, (ly1 + ly2) // 2), width=2, dash=12)
+    dashed_line(draw, (x2 + 105, (ly1 + ly2) // 2), (lx2, (ly1 + ly2) // 2), width=2, dash=12)
+    draw.text((960, 440), "<<include>>", fill="#111111", font=font(13))
+    write_drawio(
+        "usecase.drawio",
+        "UML Use Case",
+        [("Оператор<br>банка", 95, 320, 140, 230, "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;strokeColor=#111111;"),
+         ("Система банковских транзакций", 350, 125, 940, 635, "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=none;strokeWidth=2;")]
+        + [(text.replace("\n", "<br>"), xy[0], xy[1], xy[2] - xy[0], xy[3] - xy[1], "ellipse;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;") for xy, text in cases.values()],
+        [],
+    )
+    path = OUT_DIR / "usecase.png"
+    img.save(path)
+    return path
 
 
 def save_class_diagram():
-    nodes = [
-        ("client", "Client\nId\nType\nName", (70, 150, 360, 300), "#E8F1FB"),
-        ("account", "Account\nId\nClientId\nBalance", (520, 150, 830, 300), "#F2F4F7"),
-        ("transaction", "BankTransaction\nAmount\nCommission\nCreatedAt", (980, 150, 1320, 320), "#EEF7EE"),
-        ("service", "BankService\nLogin()\nDeposit()\nTransfer()", (330, 470, 680, 660), "#FFF4D8"),
-        ("database", "BankDatabase\nInitialize()\nOpenConnection()", (820, 470, 1180, 660), "#F7F9FC"),
-    ]
-    links = [
-        ("client", "account", "1..N"),
-        ("account", "transaction", "участвует"),
-        ("service", "database", "использует"),
-        ("service", "account", "обновляет"),
-    ]
-    return save_simple_flow("class_diagram.png", "UML: диаграмма классов", nodes, links)
+    img = Image.new("RGB", (1500, 1060), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "UML: диаграмма классов", fill="#0B2545", font=font(36, True))
+    classes = {
+        "client": ((70, 135, 360, 335), "Client", ["+ Id: int", "+ Type: ClientType", "+ Name: string", "+ TaxNumber: string"], []),
+        "account": ((440, 135, 760, 335), "Account", ["+ Id: int", "+ ClientId: int", "+ Type: AccountType", "+ Balance: decimal"], []),
+        "tx": ((850, 135, 1245, 355), "BankTransaction", ["+ Id: int", "+ Type: TransactionType", "+ Amount: decimal", "+ Commission: decimal"], []),
+        "partner": ((850, 450, 1245, 650), "PartnerBank", ["+ Id: int", "+ Name: string", "+ Country: string", "+ IsForeign: bool"], []),
+        "commission": ((440, 450, 760, 650), "CommissionRule", ["+ Id: int", "+ AccountType: AccountType", "+ IsForeignPartner: bool", "+ Percent: decimal"], []),
+        "service": ((70, 735, 470, 1005), "BankService", ["- database: BankDatabase"], ["+ Login()", "+ CreateClient()", "+ Deposit()", "+ Transfer()"]),
+        "db": ((560, 735, 930, 1005), "BankDatabase", ["- connectionString: string"], ["+ Initialize()", "+ OpenConnection()"]),
+    }
+    for xy, name, attrs, methods in classes.values():
+        uml_class(draw, xy, name, attrs, methods)
+    line_arrow(draw, [(360, 235), (440, 235)], width=2)
+    draw.text((370, 205), "1", fill="#111111", font=font(15))
+    draw.text((405, 205), "0..*", fill="#111111", font=font(15))
+    draw.text((385, 245), "имеет", fill="#111111", font=font(14))
+    line_arrow(draw, [(760, 235), (850, 235)], width=2)
+    draw.text((770, 205), "1", fill="#111111", font=font(15))
+    draw.text((812, 205), "0..*", fill="#111111", font=font(15))
+    draw.text((775, 245), "участвует", fill="#111111", font=font(14))
+    line_arrow(draw, [(1045, 355), (1045, 450)], width=2)
+    draw.text((1060, 395), "0..1", fill="#111111", font=font(15))
+    line_arrow(draw, [(760, 550), (850, 550)], width=2)
+    draw.text((775, 520), "используется", fill="#111111", font=font(14))
+    dashed_line(draw, (470, 855), (560, 855), width=2, dash=12)
+    line_arrow(draw, [(470, 855), (560, 855)], width=0)
+    draw.text((485, 825), "<<uses>>", fill="#111111", font=font(14))
+    write_drawio(
+        "class_diagram.drawio",
+        "UML Class Diagram",
+        [(name + "<hr/>" + "<br>".join(attrs) + "<hr/>" + "<br>".join(methods), xy[0], xy[1], xy[2] - xy[0], xy[3] - xy[1], "swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=32;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#111111;fillColor=#ffffff;strokeWidth=2;") for xy, name, attrs, methods in classes.values()],
+        [],
+    )
+    path = OUT_DIR / "class_diagram.png"
+    img.save(path)
+    return path
 
 
 def set_cell_shading(cell, fill):
