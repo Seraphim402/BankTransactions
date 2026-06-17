@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from xml.sax.saxutils import escape
 from PIL import Image, ImageDraw, ImageFont
 from docx import Document
 from docx.enum.section import WD_SECTION
@@ -49,6 +50,76 @@ def arrow(draw, start, end, color="#46627F"):
     else:
         points = [(x2, y2), (x2 + 16, y2 - 9), (x2 + 16, y2 + 9)]
     draw.polygon(points, fill=color)
+
+
+def draw_multiline_center(draw, box, text, size=24, bold=True, fill="#102A43"):
+    x1, y1, x2, y2 = box
+    lines = text.split("\n")
+    fonts = [font(size, bold) for _ in lines]
+    heights = [draw.textbbox((0, 0), line, font=f)[3] - draw.textbbox((0, 0), line, font=f)[1] for line, f in zip(lines, fonts)]
+    total_h = sum(heights) + (len(lines) - 1) * 8
+    y = y1 + ((y2 - y1) - total_h) / 2
+    for line, f, h in zip(lines, fonts, heights):
+        bbox = draw.textbbox((0, 0), line, font=f)
+        draw.text((x1 + ((x2 - x1) - (bbox[2] - bbox[0])) / 2, y), line, fill=fill, font=f)
+        y += h + 8
+
+
+def idef_function_box(draw, xy, title, node, number=None):
+    draw.rectangle(xy, fill="#FFFFFF", outline="#111111", width=3)
+    draw_multiline_center(draw, xy, title, size=24, bold=True, fill="#111111")
+    x1, y1, x2, y2 = xy
+    if number is not None:
+        draw.text((x1 + 12, y1 + 8), str(number), fill="#111111", font=font(20, True))
+    draw.text((x2 - 58, y2 - 34), node, fill="#111111", font=font(18, True))
+
+
+def label(draw, text, xy, size=18, anchor="mm"):
+    draw.text(xy, text, fill="#111111", font=font(size), anchor=anchor)
+
+
+def line_arrow(draw, points, color="#111111", width=3):
+    draw.line(points, fill=color, width=width)
+    x1, y1 = points[-2]
+    x2, y2 = points[-1]
+    if abs(x2 - x1) >= abs(y2 - y1):
+        if x2 >= x1:
+            head = [(x2, y2), (x2 - 14, y2 - 8), (x2 - 14, y2 + 8)]
+        else:
+            head = [(x2, y2), (x2 + 14, y2 - 8), (x2 + 14, y2 + 8)]
+    else:
+        if y2 >= y1:
+            head = [(x2, y2), (x2 - 8, y2 - 14), (x2 + 8, y2 - 14)]
+        else:
+            head = [(x2, y2), (x2 - 8, y2 + 14), (x2 + 8, y2 + 14)]
+    draw.polygon(head, fill=color)
+
+
+def write_drawio(name, title, vertices, edges):
+    cells = [
+        '<mxCell id="0"/>',
+        '<mxCell id="1" parent="0"/>',
+    ]
+    for idx, (label_text, x, y, w, h, style) in enumerate(vertices, start=2):
+        cells.append(
+            f'<mxCell id="v{idx}" value="{escape(label_text)}" style="{style}" vertex="1" parent="1">'
+            f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>'
+        )
+    for idx, (label_text, points, style) in enumerate(edges, start=1):
+        pts = "".join(f'<mxPoint x="{x}" y="{y}" as="{kind}"/>' for kind, x, y in points)
+        cells.append(
+            f'<mxCell id="e{idx}" value="{escape(label_text)}" style="{style}" edge="1" parent="1">'
+            f'<mxGeometry relative="1" as="geometry">{pts}</mxGeometry></mxCell>'
+        )
+    xml = (
+        '<mxfile host="app.diagrams.net">'
+        f'<diagram name="{escape(title)}"><mxGraphModel dx="1400" dy="820" grid="1" gridSize="10" guides="1" '
+        'tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" '
+        'pageWidth="1400" pageHeight="820" math="0" shadow="0"><root>'
+        + "".join(cells)
+        + '</root></mxGraphModel></diagram></mxfile>'
+    )
+    (OUT_DIR / name).write_text(xml, encoding="utf-8")
 
 
 def save_architecture():
@@ -149,49 +220,152 @@ def save_simple_flow(name, title, nodes, links):
 
 
 def save_idef0_context():
-    nodes = [
-        ("input", "Данные клиента\nи операция", (70, 335, 350, 485), "#E8F1FB"),
-        ("system", "A-0\nУправлять\nбанковскими\nтранзакциями", (530, 285, 870, 535), "#F2F4F7"),
-        ("control", "Правила банка\nкомиссии\nавторизация", (530, 120, 870, 230), "#FFF4D8"),
-        ("mechanism", "C# приложение\nSQLite\nоператор", (530, 610, 870, 740), "#EEF7EE"),
-        ("output", "Обновленные счета\nистория транзакций", (1030, 335, 1330, 485), "#E8F1FB"),
-    ]
-    links = [
-        ("input", "system", "вход"),
-        ("control", "system", "управление"),
-        ("mechanism", "system", "механизмы"),
-        ("system", "output", "выход"),
-    ]
-    return save_simple_flow("idef0_context.png", "IDEF0 A-0: контекстная диаграмма", nodes, links)
+    img = Image.new("RGB", (1400, 820), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "IDEF0 A-0: контекстная диаграмма", fill="#0B2545", font=font(36, True))
+    draw.rectangle((45, 105, 1355, 755), outline="#111111", width=2)
+    box = (480, 310, 920, 520)
+    idef_function_box(draw, box, "Управлять\nбанковскими\nтранзакциями", "A-0")
+
+    line_arrow(draw, [(90, 390), (480, 390)])
+    label(draw, "Данные клиента", (245, 360))
+    line_arrow(draw, [(90, 450), (480, 450)])
+    label(draw, "Данные операции", (250, 420))
+
+    line_arrow(draw, [(570, 145), (570, 310)])
+    label(draw, "Правила банка", (570, 125), size=16)
+    line_arrow(draw, [(700, 145), (700, 310)])
+    label(draw, "Комиссии", (700, 125), size=16)
+    line_arrow(draw, [(830, 145), (830, 310)])
+    label(draw, "Авторизация", (830, 125), size=16)
+
+    line_arrow(draw, [(920, 390), (1310, 390)])
+    label(draw, "Обновленные счета", (1095, 360))
+    line_arrow(draw, [(920, 450), (1310, 450)])
+    label(draw, "История транзакций", (1100, 420))
+
+    line_arrow(draw, [(570, 710), (570, 520)])
+    label(draw, "Оператор", (570, 735))
+    line_arrow(draw, [(700, 710), (700, 520)])
+    label(draw, "C#/.NET", (700, 735))
+    line_arrow(draw, [(830, 710), (830, 520)])
+    label(draw, "SQLite", (830, 735))
+
+    draw.text((65, 715), "NODE: A-0", fill="#111111", font=font(18, True))
+    draw.text((975, 715), "TITLE: Банковские транзакции", fill="#111111", font=font(18, True))
+    write_drawio(
+        "idef0_context.drawio",
+        "IDEF0 A-0",
+        [("Управлять<br>банковскими<br>транзакциями<br><br>A-0", 520, 310, 360, 210, "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=#ffffff;strokeWidth=3;")],
+        [],
+    )
+    path = OUT_DIR / "idef0_context.png"
+    img.save(path)
+    return path
 
 
 def save_idef0_decomposition():
-    nodes = [
-        ("a1", "A1\nАвторизовать\nоператора", (80, 150, 360, 290), "#E8F1FB"),
-        ("a2", "A2\nВести клиентов\nи счета", (430, 150, 710, 290), "#F2F4F7"),
-        ("a3", "A3\nРассчитать\nкомиссию", (780, 150, 1060, 290), "#FFF4D8"),
-        ("a4", "A4\nПровести\nтранзакцию", (430, 430, 710, 570), "#EEF7EE"),
-        ("a5", "A5\nСохранить\nисторию", (780, 430, 1060, 570), "#E8F1FB"),
-    ]
-    links = [
-        ("a1", "a2", "доступ"),
-        ("a2", "a3", "счет"),
-        ("a3", "a4", "комиссия"),
-        ("a4", "a5", "операция"),
-    ]
-    return save_simple_flow("idef0_decomposition.png", "IDEF0 A0: декомпозиция процесса", nodes, links)
+    img = Image.new("RGB", (1400, 900), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "IDEF0 A0: декомпозиция процесса", fill="#0B2545", font=font(36, True))
+    draw.rectangle((45, 105, 1355, 825), outline="#111111", width=2)
+    boxes = {
+        "a1": (120, 210, 380, 340, "Авторизовать\nоператора", "A1", 1),
+        "a2": (455, 250, 715, 380, "Вести клиентов\nи счета", "A2", 2),
+        "a3": (790, 290, 1050, 420, "Рассчитать\nкомиссию", "A3", 3),
+        "a4": (455, 530, 715, 660, "Провести\nтранзакцию", "A4", 4),
+        "a5": (790, 570, 1050, 700, "Сохранить\nисторию", "A5", 5),
+    }
+    for _, (x1, y1, x2, y2, text, node, number) in boxes.items():
+        idef_function_box(draw, (x1, y1, x2, y2), text, node, number)
+
+    line_arrow(draw, [(75, 275), (120, 275)])
+    label(draw, "Логин,\nпароль", (90, 235), size=17)
+    line_arrow(draw, [(75, 610), (455, 610)])
+    label(draw, "Данные клиента,\nсчета и операции", (250, 575), size=17)
+
+    line_arrow(draw, [(250, 145), (250, 210)])
+    label(draw, "Политика доступа", (250, 125), size=17)
+    line_arrow(draw, [(585, 145), (585, 250)])
+    label(draw, "Правила учета", (585, 125), size=17)
+    line_arrow(draw, [(920, 145), (920, 290)])
+    label(draw, "Тарифы комиссий", (920, 125), size=17)
+
+    line_arrow(draw, [(380, 275), (455, 315)])
+    label(draw, "токен", (420, 275), size=17)
+    line_arrow(draw, [(715, 315), (790, 355)])
+    label(draw, "тип счета\nи банк", (750, 300), size=17)
+    line_arrow(draw, [(920, 420), (920, 500), (715, 500), (715, 590)])
+    label(draw, "комиссия", (825, 475), size=17)
+    line_arrow(draw, [(715, 610), (790, 635)])
+    label(draw, "операция", (755, 605), size=17)
+
+    line_arrow(draw, [(715, 545), (1315, 545)])
+    label(draw, "Обновленные счета", (1080, 515), size=17)
+    line_arrow(draw, [(1050, 635), (1315, 635)])
+    label(draw, "История транзакций", (1180, 605), size=17)
+
+    line_arrow(draw, [(585, 785), (585, 660)])
+    label(draw, "Сервер C#", (585, 808), size=17)
+    line_arrow(draw, [(920, 785), (920, 700)])
+    label(draw, "SQLite", (920, 808), size=17)
+    line_arrow(draw, [(250, 785), (250, 340)])
+    label(draw, "Оператор", (250, 808), size=17)
+
+    draw.text((65, 790), "NODE: A0", fill="#111111", font=font(18, True))
+    draw.text((970, 790), "TITLE: Управлять банковскими транзакциями", fill="#111111", font=font(18, True))
+    write_drawio(
+        "idef0_decomposition.drawio",
+        "IDEF0 A0",
+        [(data[4] + f"<br><br>{data[5]}", data[0], data[1], data[2] - data[0], data[3] - data[1], "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=#ffffff;strokeWidth=3;") for data in boxes.values()],
+        [],
+    )
+    path = OUT_DIR / "idef0_decomposition.png"
+    img.save(path)
+    return path
 
 
 def save_idef3():
-    nodes = [
-        ("n1", "1. Вход\nв систему", (70, 330, 290, 460), "#E8F1FB"),
-        ("n2", "2. Выбор\nсчетов", (350, 330, 570, 460), "#F2F4F7"),
-        ("n3", "3. Проверка\nбаланса", (630, 330, 850, 460), "#FFF4D8"),
-        ("n4", "4. Списание\nи зачисление", (910, 330, 1130, 460), "#EEF7EE"),
-        ("n5", "5. Запись\nтранзакции", (1190, 330, 1370, 460), "#E8F1FB"),
+    img = Image.new("RGB", (1400, 820), "#FFFFFF")
+    draw = ImageDraw.Draw(img)
+    draw.text((50, 35), "IDEF3: сценарий проведения перевода", fill="#0B2545", font=font(36, True))
+    draw.rectangle((45, 105, 1355, 755), outline="#111111", width=2)
+    uobs = [
+        ("UOB 1", "Выполнить\nавторизацию", (90, 300, 300, 430)),
+        ("UOB 2", "Выбрать счет\nсписания и счет\nполучателя", (360, 300, 610, 430)),
+        ("UOB 3", "Проверить баланс\nс учетом комиссии", (670, 300, 920, 430)),
+        ("UOB 4", "Списать сумму\nи комиссию", (1010, 210, 1260, 340)),
+        ("UOB 5", "Записать отказ\nв операции", (690, 520, 940, 650)),
+        ("UOB 6", "Сохранить\nтранзакцию", (1010, 610, 1260, 710)),
     ]
-    links = [("n1", "n2", ""), ("n2", "n3", ""), ("n3", "n4", ""), ("n4", "n5", "")]
-    return save_simple_flow("idef3.png", "IDEF3: сценарий перевода", nodes, links)
+    for code, text, xy in uobs:
+        draw.rectangle(xy, fill="#FFFFFF", outline="#111111", width=3)
+        x1, y1, x2, y2 = xy
+        draw.text((x1 + 8, y1 + 6), code, fill="#111111", font=font(16, True))
+        draw_multiline_center(draw, (x1, y1 + 22, x2, y2), text, size=20, bold=True, fill="#111111")
+    junction = (965, 365)
+    draw.ellipse((junction[0] - 22, junction[1] - 22, junction[0] + 22, junction[1] + 22), fill="#FFFFFF", outline="#111111", width=3)
+    draw.text((junction[0] - 6, junction[1] - 14), "X", fill="#111111", font=font(22, True))
+    line_arrow(draw, [(300, 365), (360, 365)])
+    line_arrow(draw, [(610, 365), (670, 365)])
+    line_arrow(draw, [(920, 365), (943, 365)])
+    line_arrow(draw, [(987, 365), (1010, 275)])
+    label(draw, "достаточно средств", (1110, 190), size=16)
+    line_arrow(draw, [(965, 387), (965, 585), (940, 585)])
+    label(draw, "недостаточно средств", (850, 495), size=16)
+    line_arrow(draw, [(1135, 340), (1135, 610)])
+    label(draw, "после списания", (1225, 480), size=16)
+    draw.text((65, 710), "SCENARIO: перевод между счетами", fill="#111111", font=font(18, True))
+    draw.text((1135, 710), "IDEF3: UOB + XOR junction", fill="#111111", font=font(18, True))
+    write_drawio(
+        "idef3.drawio",
+        "IDEF3",
+        [(f"{code}<br>{text.replace(chr(10), '<br>')}", xy[0], xy[1], xy[2] - xy[0], xy[3] - xy[1], "whiteSpace=wrap;html=1;rounded=0;strokeColor=#111111;fillColor=#ffffff;strokeWidth=3;") for code, text, xy in uobs],
+        [],
+    )
+    path = OUT_DIR / "idef3.png"
+    img.save(path)
+    return path
 
 
 def save_dfd():

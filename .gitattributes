@@ -5,6 +5,7 @@
 *.md text eol=crlf
 *.py text eol=lf
 *.bat text eol=crlf
+*.drawio text eol=lf
 *.docx binary
 *.png binary
 *.exe binary
